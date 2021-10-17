@@ -12,8 +12,8 @@ fmt-check: ## check if the code is formatted properly
 	@if [ "$$(gofmt -s -l . | wc -l)" -gt 0 ]; then echo "Formatting errors found! Please fix them by running: make fmt" ; exit 1; fi
 
 .PHONY: run
-run: ## run the application
-	go run main.go
+run: build ## run the application
+	./build/hellofront
 
 .PHONY: test
 test: ## run unit tests

@@ -5,6 +5,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"html/template"
 	"net/http"
+	"os"
 )
 
 var (
@@ -17,9 +18,22 @@ var (
 	prometheusRegistry = prometheus.NewRegistry()
 )
 
-func GetIndex(w http.ResponseWriter, req *http.Request) {
+type GetIndexHandler struct {
+	HelloClient *HelloClient
+}
+
+func (h *GetIndexHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	message, _ := h.HelloClient.GetHello("There")
+
 	t, _ := template.ParseFiles("templates/index.html")
-	t.Execute(w, "Hello World!")
+	t.Execute(w, message)
+}
+
+func getEnv(key, fallback string) string {
+	if value, ok := os.LookupEnv(key); ok {
+		return value
+	}
+	return fallback
 }
 
 func main() {
@@ -28,6 +42,11 @@ func main() {
 
 	//Configure HTTP server
 	http.Handle("/metrics", promhttp.HandlerFor(prometheusRegistry, promhttp.HandlerOpts{}))
-	http.HandleFunc("/", promhttp.InstrumentHandlerCounter(httpRequestsTotal.MustCurryWith(prometheus.Labels{"endpoint": "index"}), http.HandlerFunc(GetIndex)))
-	http.ListenAndServe(":8080", nil)
+	http.HandleFunc("/",
+		promhttp.InstrumentHandlerCounter(
+			httpRequestsTotal.MustCurryWith(prometheus.Labels{"endpoint": "index"}),
+			&GetIndexHandler{HelloClient: NewHelloClient(getEnv("HELLOAPP_URL", "http://localhost:8080"))},
+		),
+	)
+	http.ListenAndServe(":"+getEnv("PORT", "8080"), nil)
 }

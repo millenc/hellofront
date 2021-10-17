@@ -1,0 +1,40 @@
+name: hellofront
+on: [push]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  fmt-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v2
+        with:
+          go-version: '^1.15.5'
+      - name: Check Go code formatting
+        run: make fmt-check
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v2
+        with:
+          go-version: '^1.15.5'
+      - name: Run unit tests
+        run: make test
+  docker-release:
+    runs-on: ubuntu-latest
+    needs: [fmt-check, test]
+    if: github.ref == 'refs/heads/master'
+    steps:
+      - uses: actions/checkout@v2
+      - name: Log in to the Container registry
+        uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build & publish the Docker image
+        run: make docker-release DOCKER_IMAGE="$REGISTRY/$IMAGE_NAME" DOCKER_VERSION=$GITHUB_SHA
