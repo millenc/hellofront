@@ -24,7 +24,7 @@ kind: Rollout
 metadata:
   name: hellofront
 spec:
-  replicas: 6
+  replicas: 2
   strategy:
     canary:
       trafficRouting:
