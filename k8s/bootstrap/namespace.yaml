@@ -1,0 +1,7 @@
+kind: Namespace
+apiVersion: v1
+metadata:
+  name: hellofront
+  labels:
+    name: hellofront
+    istio-injection: enabled

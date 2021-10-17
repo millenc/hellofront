@@ -1,0 +1,68 @@
+---
+# Kubernetes Service for the app
+apiVersion: v1
+kind: Service
+metadata:
+  name: hellofront
+  labels:
+    app: hellofront
+spec:
+  ports:
+  - port: 8080
+    targetPort: http
+    protocol: TCP
+    name: http
+  selector:
+    app: hellofront
+---
+# Istio Virtual Service
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: hellofront
+spec:
+  gateways:
+  - hellofront
+  hosts:
+  - "*" # The service name ("hellofront") or FQDN ("hellofront.hellofront.svc.cluster.local") can be used here.
+  http:
+  - name: primary
+    route:
+    - destination:
+        host: hellofront
+        subset: stable
+      weight: 100
+    - destination:
+        host: hellofront
+        subset: canary
+      weight: 0
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  name: hellofront
+spec:
+  host: hellofront
+  subsets:
+  - name: canary
+    labels:
+      app: hellofront
+  - name: stable
+    labels:
+      app: hellofront
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: hellofront
+  namespace: hellofront
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - "*" # A FQDN should be used here: such as api.hellofront.com (internal name hellofront.hellofront.svc.cluster.local)

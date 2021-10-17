@@ -1,4 +1,4 @@
-module millen.dev/helloapp
+module millen.dev/hellofront
 
 go 1.15
 

@@ -1,0 +1,86 @@
+# NOTE: Generate traffic with:  ab -r -t 900 -n 100000000 -c 20 http://127.0.0.1:34251/hello
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: success-rate
+spec:
+  args:
+  - name: service-name # this can be used as a variable when doing queries with `{{args.service-name}}`
+  metrics:
+  - name: success-rate
+    interval: 1m
+    initialDelay: 1m
+    # NOTE: prometheus queries return results in the form of a vector.
+    # So it is common to access the index 0 of the returned array to obtain the value
+    successCondition: result[0] >= 0.95
+    failureLimit: 3
+    provider:
+      prometheus:
+        address: http://prometheus-kube-prometheus-prometheus.prometheus.svc.cluster.local:9090
+        query: max(sum(increase(http_requests_total{service="hellofront", code=~"^[23].*", version="canary"}[1m]))  / sum(increase(http_requests_total{service="hellofront", version="canary"}[1m])) <100 or on() vector(1)) # NOTE: if there is no traffic, we assume everything is right and return a 1
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: hellofront
+spec:
+  replicas: 6
+  strategy:
+    canary:
+      trafficRouting:
+        istio:
+          virtualService:
+            name: hellofront
+            routes:
+            - primary
+          destinationRule:
+            name: hellofront
+            canarySubsetName: canary
+            stableSubsetName: stable
+      analysis:
+        templates:
+        - templateName: success-rate
+        startingStep: 1
+        args:
+        - name: service-name
+          value: hellofront
+      steps:
+      - setWeight: 10
+      - pause: {duration: 5m}
+      - setWeight: 25
+      - pause: {duration: 2m}
+      - setWeight: 50
+      - pause: {duration: 2m}
+      - setWeight: 75
+      - pause: {duration: 2m}
+      stableMetadata:
+        labels:
+          version: stable
+      canaryMetadata:
+        labels:
+          version: canary
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      app: hellofront
+  template:
+    metadata:
+      labels:
+        app: hellofront
+    spec:
+      containers:
+      - name: hellofront
+        image: ghcr.io/millenc/hellofront:e682bb901e8177102d2be382ca3ece375117b232
+        env:
+        - name: HELLOAPP_URL
+          value: "http://helloapp.helloapp.svc.cluster.local:8080"
+        ports:
+        - name: http
+          containerPort: 8080
+          protocol: TCP
+        resources:
+          requests:
+            memory: 32Mi
+            cpu: 5m
+      imagePullSecrets:
+      - name: hellofront-dockerconfigjson-github-com
