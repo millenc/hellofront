@@ -70,7 +70,7 @@ spec:
     spec:
       containers:
       - name: hellofront
-        image: ghcr.io/millenc/hellofront:e682bb901e8177102d2be382ca3ece375117b232
+        image: ghcr.io/millenc/hellofront:9bec28e1c4d0313ca4ac182382a063b9fb3c0d88
         env:
         - name: HELLOAPP_URL
           value: "http://helloapp.helloapp.svc.cluster.local:8080"
