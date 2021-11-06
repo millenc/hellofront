@@ -27,10 +27,15 @@ func NewHelloClient(serviceUrl string) *HelloClient {
 	}
 }
 
-func (c *HelloClient) GetHello(name string) (message string, err error) {
+func (c *HelloClient) GetHello(name string, headers map[string]string) (message string, err error) {
 	req, err := http.NewRequest("GET",
 		fmt.Sprintf("%s/hello", c.serviceUrl), nil)
+
+	// Set request headers
 	req.Header.Add("Accept", "application/json")
+	for header, value := range headers {
+		req.Header.Add(header, value)
+	}
 
 	if name != "" {
 		q := req.URL.Query()

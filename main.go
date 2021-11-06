@@ -22,8 +22,29 @@ type GetIndexHandler struct {
 	HelloClient *HelloClient
 }
 
+func GetTraceHeadersFromRequest(req *http.Request) map[string]string {
+	headers := make(map[string]string)
+	relevantHeaderNames := []string{
+		"x-request-id",
+		"x-b3-traceid",
+		"x-b3-spanid",
+		"x-b3-parentspanid",
+		"x-b3-sampled",
+		"x-b3-flags",
+		"x-ot-span-context",
+	}
+
+	for _, header := range relevantHeaderNames {
+		if value := req.Header.Get(header); value != "" {
+			headers[header] = value
+		}
+	}
+
+	return headers
+}
+
 func (h *GetIndexHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	message, _ := h.HelloClient.GetHello("There")
+	message, _ := h.HelloClient.GetHello("There", GetTraceHeadersFromRequest(req))
 
 	t, _ := template.ParseFiles("templates/index.html")
 	t.Execute(w, message)
